@@ -1,12 +1,15 @@
 package main
 
 import (
+	"time"
+
 	"github.com/tidusant/c3m-common/c3mcommon"
 	"github.com/tidusant/c3m-common/log"
 	"github.com/tidusant/c3m-common/mycrypto"
 	"github.com/tidusant/c3m-common/mystring"
 	rpch "github.com/tidusant/chadmin-repo/cuahang"
 	"github.com/tidusant/chadmin-repo/models"
+	"gopkg.in/mgo.v2/bson"
 
 	"encoding/base64"
 	"encoding/json"
@@ -181,7 +184,7 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 		orders[k].Name = cuss[v.Phone].Name
 		orders[k].Email = cuss[v.Phone].Email
 		orders[k].Address = cuss[v.Phone].Address
-		orders[k].Note = cuss[v.Phone].Note
+		orders[k].CusNote = cuss[v.Phone].Note
 		orders[k].OrderCount = rpch.CountOrderByCus(v.Phone, usex.Shop.ID.Hex())
 
 	}
@@ -290,6 +293,8 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder = rpch.GetOrderByID(order.ID.Hex(), shop.ID.Hex())
 	} else {
 		oldorder.ShopId = usex.Shop.ID.Hex()
+		oldorder.ID = bson.NewObjectId()
+		oldorder.Created = time.Now().Unix()
 	}
 
 	var cus models.Customer
