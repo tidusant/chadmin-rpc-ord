@@ -96,7 +96,7 @@ func parseOrder(order models.Order, usex models.UserSession, defaultstatus model
 		code := orderc[:3]
 		orderc = orderc[3:]
 		//get prod
-		prod := rpch.GetProdByCode(usex.UserID, usex.Shop.ID.Hex(), code)
+		prod := rpch.GetProdByCode(usex.Shop.ID.Hex(), code)
 		if prod.Code == "" {
 			//prod not found
 			break
@@ -183,6 +183,9 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 		}
 		orders[k].Name = cuss[v.Phone].Name
 		orders[k].Email = cuss[v.Phone].Email
+		orders[k].City = cuss[v.Phone].City
+		orders[k].District = cuss[v.Phone].District
+		orders[k].Ward = cuss[v.Phone].Ward
 		orders[k].Address = cuss[v.Phone].Address
 		orders[k].CusNote = cuss[v.Phone].Note
 		orders[k].OrderCount = rpch.CountOrderByCus(v.Phone, usex.Shop.ID.Hex())
@@ -194,38 +197,46 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
 }
 func LoadAllStatus(usex models.UserSession) string {
-	shop := rpch.GetShopById(usex.UserID, usex.Shop.ID.Hex())
-	if shop.Status == 0 {
-		return c3mcommon.ReturnJsonMessage("-4", "Shop is disabled.", "", "")
-	}
+
 	//default status
 	status := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
 	//update order from web
+	cities := rpch.GetCities()
+	//update order from web
 
 	info, _ := json.Marshal(status)
-	strrt := string(info)
+	citiesb, _ := json.Marshal(cities)
+	strrt := `{"Status":` + string(info) + `,"Cities":` + string(citiesb) + `}`
 	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
 }
 
 func UpdateOrderStatus(usex models.UserSession) string {
-	shop := rpch.GetShopById(usex.UserID, usex.Shop.ID.Hex())
-	if shop.Status == 0 {
-		return c3mcommon.ReturnJsonMessage("-4", "Shop is disabled.", "", "")
-	}
+
 	info := strings.Split(usex.Params, ",")
+	cancelPartner := "0"
 	if len(info) > 1 {
 		changestatusid := info[len(info)-1]
 		info = info[:len(info)-1]
-		rpch.UpdateOrderStatus(shop.ID.Hex(), changestatusid, info)
+		rpch.UpdateOrderStatus(usex.Shop.ID.Hex(), changestatusid, info)
+
+		//check cancel ghtk status:
+		status := rpch.GetStatusByID(changestatusid, usex.Shop.ID.Hex())
+		ghtkstatussync := status.PartnerStatus["ghtk"]
+		if ghtkstatussync != nil {
+			for _, statcode := range ghtkstatussync {
+				if statcode == "-1" {
+					cancelPartner = "1"
+				}
+			}
+		}
+
 	}
-	return c3mcommon.ReturnJsonMessage("1", "", "success", "")
+
+	return c3mcommon.ReturnJsonMessage("1", "", cancelPartner, "")
 }
 
 func SaveStatus(usex models.UserSession) string {
-	shop := rpch.GetShopById(usex.UserID, usex.Shop.ID.Hex())
-	if shop.Status == 0 {
-		return c3mcommon.ReturnJsonMessage("-4", "Shop is disabled.", "", "")
-	}
+
 	var status models.OrderStatus
 	err := json.Unmarshal([]byte(usex.Params), &status)
 	if !c3mcommon.CheckError("update status parse json", err) {
@@ -234,11 +245,12 @@ func SaveStatus(usex models.UserSession) string {
 	//check old status
 	oldstat := status
 	if oldstat.ID.Hex() != "" {
-		oldstat = rpch.GetStatusByID(status.ID.Hex(), shop.ID.Hex())
+		oldstat = rpch.GetStatusByID(status.ID.Hex(), usex.Shop.ID.Hex())
 		oldstat.Title = status.Title
 		oldstat.Color = status.Color
 		oldstat.Default = status.Default
 		oldstat.Finish = status.Finish
+		oldstat.PartnerStatus = status.PartnerStatus
 	} else {
 		oldstat.UserId = usex.UserID
 		oldstat.ShopId = usex.Shop.ID.Hex()
@@ -246,7 +258,7 @@ func SaveStatus(usex models.UserSession) string {
 
 	//check default
 	if oldstat.Default == true {
-		rpch.UnSetStatusDefault(shop.ID.Hex())
+		rpch.UnSetStatusDefault(usex.Shop.ID.Hex())
 	}
 	if oldstat.Color == "" {
 		oldstat.Color = "ffffff"
@@ -305,12 +317,18 @@ func UpdateOrder(usex models.UserSession) string {
 	}
 	cus.Phone = order.Phone
 	cus.Name = order.Name
+	cus.City = order.City
+	cus.District = order.District
+	cus.Ward = order.Ward
 	cus.Address = order.Address
 	cus.Email = order.Email
 	cus.Note = order.CusNote
 	cus.ShopId = shop.ID.Hex()
 	if rpch.SaveCus(cus) {
 		//save order
+		oldorder.City = order.City
+		oldorder.District = order.District
+		oldorder.Ward = order.Ward
 		oldorder.Address = order.Address
 		oldorder.Name = order.Name
 		oldorder.Email = order.Email
