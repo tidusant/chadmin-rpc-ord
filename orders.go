@@ -342,6 +342,7 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.Note = order.Note
 		oldorder.PartnerShipFee = order.PartnerShipFee
 		oldorder.ShipFee = order.ShipFee
+		oldorder.ShipmentCode = order.ShipmentCode
 		oldorder.Total = order.Total
 		rpch.SaveOrder(oldorder)
 
