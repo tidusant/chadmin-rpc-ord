@@ -169,8 +169,14 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 	orders := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), "", 0, pagesize, "")
 	//default status
 	defaultstatus := rpch.GetDefaultOrderStatus(usex.Shop.ID.Hex())
-	//default status
+	//default shipper
 	defaultshipper := rpch.GetDefaultShipper(usex.Shop.ID.Hex())
+	//all campaign
+	camps := rpch.GetAllCampaigns(usex.Shop.ID.Hex())
+	mapcamp := make(map[string]string)
+	for _, v := range camps {
+		mapcamp[v.ID.Hex()] = v.Name
+	}
 	for _, order := range orders {
 		parseOrder(order, usex, defaultstatus, defaultshipper)
 	}
@@ -182,6 +188,10 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 			cuss[v.Phone] = rpch.GetCusByPhone(v.Phone, usex.Shop.ID.Hex())
 		}
 		orders[k].Name = cuss[v.Phone].Name
+		if campname, ok := mapcamp[orders[k].CampaignId]; ok {
+			orders[k].CampaignName = campname
+		}
+
 		orders[k].Email = cuss[v.Phone].Email
 		orders[k].City = cuss[v.Phone].City
 		orders[k].District = cuss[v.Phone].District
