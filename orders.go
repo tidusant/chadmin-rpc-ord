@@ -61,7 +61,6 @@ func (t *Arith) Run(data string, result *string) error {
 		return nil
 	}
 	usex.Shop = shop
-
 	if usex.Action == "status" {
 		*result = LoadAllStatus(usex)
 	} else if usex.Action == "lao" {
