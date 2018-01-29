@@ -66,6 +66,8 @@ func (t *Arith) Run(data string, result *string) error {
 		*result = LoadAllStatus(usex)
 	} else if usex.Action == "lao" {
 		*result = LoadAllOrderByStatus(usex)
+	} else if usex.Action == "lg" {
+		*result = LoadCities(usex)
 	} else if usex.Action == "us" {
 		*result = UpdateOrderStatus(usex)
 	} else if usex.Action == "ds" {
@@ -217,6 +219,18 @@ func LoadAllStatus(usex models.UserSession) string {
 	info, _ := json.Marshal(status)
 	citiesb, _ := json.Marshal(cities)
 	strrt := `{"Status":` + string(info) + `,"Cities":` + string(citiesb) + `}`
+	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
+}
+func LoadCities(usex models.UserSession) string {
+
+	//default status
+
+	//update order from web
+	cities := rpch.GetCities()
+	//update order from web
+
+	citiesb, _ := json.Marshal(cities)
+	strrt := string(citiesb)
 	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
 }
 
