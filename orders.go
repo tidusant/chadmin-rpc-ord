@@ -213,12 +213,10 @@ func LoadAllStatus(usex models.UserSession) string {
 	//default status
 	status := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
 	//update order from web
-	cities := rpch.GetCities()
-	//update order from web
 
 	info, _ := json.Marshal(status)
-	citiesb, _ := json.Marshal(cities)
-	strrt := `{"Status":` + string(info) + `,"Cities":` + string(citiesb) + `}`
+
+	strrt := string(info)
 	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
 }
 func LoadCities(usex models.UserSession) string {
