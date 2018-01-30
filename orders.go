@@ -16,7 +16,6 @@ import (
 	"math"
 
 	"flag"
-	"fmt"
 	"net"
 	"net/rpc"
 	"strconv"
@@ -61,7 +60,9 @@ func (t *Arith) Run(data string, result *string) error {
 		return nil
 	}
 	usex.Shop = shop
-	if usex.Action == "status" {
+	if usex.Action == "statusc" {
+		*result = LoadAllStatusCount(usex)
+	} else if usex.Action == "status" {
 		*result = LoadAllStatus(usex)
 	} else if usex.Action == "lao" {
 		*result = LoadAllOrderByStatus(usex)
@@ -211,8 +212,20 @@ func LoadAllStatus(usex models.UserSession) string {
 
 	//default status
 	status := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
-	//update order from web
 
+	info, _ := json.Marshal(status)
+
+	strrt := string(info)
+	return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
+}
+func LoadAllStatusCount(usex models.UserSession) string {
+
+	//default status
+	status := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
+	//update order from web
+	for k, v := range status {
+		status[k].OrderCount = rpch.CountOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), "")
+	}
 	info, _ := json.Marshal(status)
 
 	strrt := string(info)
@@ -380,15 +393,15 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Indicates if debug messages should be printed in log files")
 	flag.Parse()
 
-	logLevel := log.DebugLevel
-	if !debug {
-		logLevel = log.InfoLevel
+	// logLevel := log.DebugLevel
+	// if !debug {
+	// 	logLevel = log.InfoLevel
 
-	}
+	// }
 
-	log.SetOutputFile(fmt.Sprintf("adminOrder-"+strconv.Itoa(port)), logLevel)
-	defer log.CloseOutputFile()
-	log.RedirectStdOut()
+	// log.SetOutputFile(fmt.Sprintf("adminOrder-"+strconv.Itoa(port)), logLevel)
+	// defer log.CloseOutputFile()
+	// log.RedirectStdOut()
 
 	//init db
 	arith := new(Arith)
