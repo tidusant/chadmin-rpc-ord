@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/tidusant/c3m-common/c3mcommon"
+	"github.com/tidusant/c3m-common/inflect"
 	"github.com/tidusant/c3m-common/log"
 	"github.com/tidusant/c3m-common/mycrypto"
 	"github.com/tidusant/c3m-common/mystring"
@@ -201,6 +202,7 @@ func LoadAllOrderByStatus(usex models.UserSession) string {
 		orders[k].Address = cuss[v.Phone].Address
 		orders[k].CusNote = cuss[v.Phone].Note
 		orders[k].OrderCount = rpch.CountOrderByCus(v.Phone, usex.Shop.ID.Hex())
+		orders[k].SearchIndex = ""
 
 	}
 	info, _ := json.Marshal(orders)
@@ -222,9 +224,27 @@ func LoadAllStatusCount(usex models.UserSession) string {
 
 	//default status
 	status := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
+	//all campaign
+	camps := rpch.GetAllCampaigns(usex.Shop.ID.Hex())
+	mapcamp := make(map[string]string)
+	for _, v := range camps {
+		mapcamp[v.ID.Hex()] = v.Name
+	}
 	//update order from web
 	for k, v := range status {
 		status[k].OrderCount = rpch.CountOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), "")
+		ords := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), 1, 100000, "")
+		cuss := make(map[string]models.Customer)
+		for _, ord := range ords {
+			//get cus
+			if _, ok := cuss[ord.Phone]; !ok {
+				cuss[ord.Phone] = rpch.GetCusByPhone(ord.Phone, usex.Shop.ID.Hex())
+			}
+			ord.CampaignName = mapcamp[ord.CampaignId]
+			ord.SearchIndex = inflect.ParameterizeJoin(ord.Name+ord.City+ord.District+ord.Ward+ord.Address+ord.CusNote+ord.Note+ord.ShipmentCode+mapcamp[ord.CampaignId]+cuss[ord.Phone].Name+cuss[ord.Phone].City+cuss[ord.Phone].District+cuss[ord.Phone].Ward+cuss[ord.Phone].Address+cuss[ord.Phone].Email+cuss[ord.Phone].Note, " ")
+			rpch.SaveOrder(ord)
+		}
+
 	}
 	info, _ := json.Marshal(status)
 
@@ -343,6 +363,13 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.Created = time.Now().Unix()
 	}
 
+	//all campaign
+	camps := rpch.GetAllCampaigns(usex.Shop.ID.Hex())
+	mapcamp := make(map[string]string)
+	for _, v := range camps {
+		mapcamp[v.ID.Hex()] = v.Name
+	}
+
 	var cus models.Customer
 	if oldorder.Phone == order.Phone {
 		cus = rpch.GetCusByPhone(order.Phone, shop.ID.Hex())
@@ -371,15 +398,19 @@ func UpdateOrder(usex models.UserSession) string {
 
 		oldorder.Items = order.Items
 		oldorder.BaseTotal = order.BaseTotal
-		oldorder.CampaignId = order.CampaignId
+		if order.CampaignId != "" {
+			oldorder.CampaignId = order.CampaignId
+			oldorder.CampaignName = order.CampaignName
+		}
 		oldorder.ShipperId = order.ShipperId
 		oldorder.Note = order.Note
 		oldorder.PartnerShipFee = order.PartnerShipFee
 		oldorder.ShipFee = order.ShipFee
 		oldorder.ShipmentCode = order.ShipmentCode
 		oldorder.Total = order.Total
+		oldorder.SearchIndex = inflect.ParameterizeJoin(oldorder.Name+oldorder.Email+oldorder.Phone+oldorder.City+oldorder.District+oldorder.Ward+oldorder.Address+oldorder.CusNote+oldorder.Note+oldorder.ShipmentCode+oldorder.CampaignName, " ")
 		rpch.SaveOrder(oldorder)
-
+		oldorder.SearchIndex = ""
 		info, _ := json.Marshal(oldorder)
 		strrt := string(info)
 		return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
