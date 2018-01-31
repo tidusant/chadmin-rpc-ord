@@ -233,17 +233,17 @@ func LoadAllStatusCount(usex models.UserSession) string {
 	//update order from web
 	for k, v := range status {
 		status[k].OrderCount = rpch.CountOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), "")
-		ords := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), 1, 100000, "")
-		cuss := make(map[string]models.Customer)
-		for _, ord := range ords {
-			//get cus
-			if _, ok := cuss[ord.Phone]; !ok {
-				cuss[ord.Phone] = rpch.GetCusByPhone(ord.Phone, usex.Shop.ID.Hex())
-			}
-			ord.CampaignName = mapcamp[ord.CampaignId]
-			ord.SearchIndex = inflect.ParameterizeJoin(ord.Name+ord.Phone+ord.City+ord.District+ord.Ward+ord.Address+ord.CusNote+ord.Note+ord.ShipmentCode+mapcamp[ord.CampaignId]+cuss[ord.Phone].Name+cuss[ord.Phone].City+cuss[ord.Phone].District+cuss[ord.Phone].Ward+cuss[ord.Phone].Address+cuss[ord.Phone].Email+cuss[ord.Phone].Note, " ")
-			rpch.SaveOrder(ord)
-		}
+		// ords := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), 1, 100000, "")
+		// cuss := make(map[string]models.Customer)
+		// for _, ord := range ords {
+		// 	//get cus
+		// 	if _, ok := cuss[ord.Phone]; !ok {
+		// 		cuss[ord.Phone] = rpch.GetCusByPhone(ord.Phone, usex.Shop.ID.Hex())
+		// 	}
+		// 	ord.CampaignName = mapcamp[ord.CampaignId]
+		// 	ord.SearchIndex = inflect.ParameterizeJoin(ord.Name+ord.Phone+ord.City+ord.District+ord.Ward+ord.Address+ord.CusNote+ord.Note+ord.ShipmentCode+mapcamp[ord.CampaignId]+cuss[ord.Phone].Name+cuss[ord.Phone].City+cuss[ord.Phone].District+cuss[ord.Phone].Ward+cuss[ord.Phone].Address+cuss[ord.Phone].Email+cuss[ord.Phone].Note, " ")
+		// 	rpch.SaveOrder(ord)
+		// }
 
 	}
 	info, _ := json.Marshal(status)
