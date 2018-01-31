@@ -230,20 +230,26 @@ func LoadAllStatusCount(usex models.UserSession) string {
 	for _, v := range camps {
 		mapcamp[v.ID.Hex()] = v.Name
 	}
+	//all shipper
+	shippers := rpch.GetAllShipper(usex.Shop.ID.Hex())
+	mapshipper := make(map[string]string)
+	for _, v := range shippers {
+		mapshipper[v.ID.Hex()] = v.Name
+	}
 	//update order from web
 	for k, v := range status {
 		status[k].OrderCount = rpch.CountOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), "")
-		// ords := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), 1, 100000, "")
-		// cuss := make(map[string]models.Customer)
-		// for _, ord := range ords {
-		// 	//get cus
-		// 	if _, ok := cuss[ord.Phone]; !ok {
-		// 		cuss[ord.Phone] = rpch.GetCusByPhone(ord.Phone, usex.Shop.ID.Hex())
-		// 	}
-		// 	ord.CampaignName = mapcamp[ord.CampaignId]
-		// 	ord.SearchIndex = inflect.ParameterizeJoin(ord.Name+ord.Phone+ord.City+ord.District+ord.Ward+ord.Address+ord.CusNote+ord.Note+ord.ShipmentCode+mapcamp[ord.CampaignId]+cuss[ord.Phone].Name+cuss[ord.Phone].City+cuss[ord.Phone].District+cuss[ord.Phone].Ward+cuss[ord.Phone].Address+cuss[ord.Phone].Email+cuss[ord.Phone].Note, " ")
-		// 	rpch.SaveOrder(ord)
-		// }
+		ords := rpch.GetOrdersByStatus(usex.Shop.ID.Hex(), v.ID.Hex(), 1, 100000, "")
+		cuss := make(map[string]models.Customer)
+		for _, ord := range ords {
+			//get cus
+			if _, ok := cuss[ord.Phone]; !ok {
+				cuss[ord.Phone] = rpch.GetCusByPhone(ord.Phone, usex.Shop.ID.Hex())
+			}
+			ord.CampaignName = mapcamp[ord.CampaignId]
+			ord.SearchIndex = inflect.ParameterizeJoin(ord.Name+ord.Phone+ord.City+ord.District+ord.Ward+ord.Address+ord.CusNote+ord.Note+ord.ShipmentCode+mapcamp[ord.CampaignId]+cuss[ord.Phone].Name+cuss[ord.Phone].City+cuss[ord.Phone].District+cuss[ord.Phone].Ward+cuss[ord.Phone].Address+cuss[ord.Phone].Email+cuss[ord.Phone].Note+mapshipper[ord.ShipperId], " ")
+			rpch.SaveOrder(ord)
+		}
 
 	}
 	info, _ := json.Marshal(status)
@@ -369,6 +375,12 @@ func UpdateOrder(usex models.UserSession) string {
 	for _, v := range camps {
 		mapcamp[v.ID.Hex()] = v.Name
 	}
+	//all shipper
+	shippers := rpch.GetAllShipper(usex.Shop.ID.Hex())
+	mapshipper := make(map[string]string)
+	for _, v := range shippers {
+		mapshipper[v.ID.Hex()] = v.Name
+	}
 
 	var cus models.Customer
 	if oldorder.Phone == order.Phone {
@@ -408,7 +420,7 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.ShipFee = order.ShipFee
 		oldorder.ShipmentCode = order.ShipmentCode
 		oldorder.Total = order.Total
-		oldorder.SearchIndex = inflect.ParameterizeJoin(oldorder.Name+oldorder.Email+oldorder.Phone+oldorder.City+oldorder.District+oldorder.Ward+oldorder.Address+oldorder.CusNote+oldorder.Note+oldorder.ShipmentCode+oldorder.CampaignName, " ")
+		oldorder.SearchIndex = inflect.ParameterizeJoin(oldorder.Name+oldorder.Email+oldorder.Phone+oldorder.City+oldorder.District+oldorder.Ward+oldorder.Address+oldorder.CusNote+oldorder.Note+oldorder.ShipmentCode+oldorder.CampaignName+mapshipper[oldorder.ShipperId], " ")
 		rpch.SaveOrder(oldorder)
 		oldorder.SearchIndex = ""
 		info, _ := json.Marshal(oldorder)
