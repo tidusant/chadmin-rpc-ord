@@ -367,6 +367,7 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.ShopId = usex.Shop.ID.Hex()
 		oldorder.ID = bson.NewObjectId()
 		oldorder.Created = time.Now().Unix()
+		oldorder.Modified = oldorder.Created
 	}
 
 	//all campaign
@@ -413,6 +414,9 @@ func UpdateOrder(usex models.UserSession) string {
 		if order.CampaignId != "" {
 			oldorder.CampaignId = order.CampaignId
 			oldorder.CampaignName = order.CampaignName
+		}
+		if oldorder.Whookupdate == 0 {
+			oldorder.Whookupdate = oldorder.Modified
 		}
 		oldorder.ShipperId = order.ShipperId
 		oldorder.Note = order.Note
