@@ -278,7 +278,6 @@ func UpdateOrderStatus(usex models.UserSession) string {
 		changestatusid := info[len(info)-1]
 		info = info[:len(info)-1]
 		rpch.UpdateOrderStatus(usex.Shop.ID.Hex(), changestatusid, info)
-
 		//check cancel ghtk status:
 		status := rpch.GetStatusByID(changestatusid, usex.Shop.ID.Hex())
 		ghtkstatussync := status.PartnerStatus["ghtk"]
