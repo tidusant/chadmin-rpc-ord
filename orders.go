@@ -429,6 +429,7 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.SearchIndex = ""
 		info, _ := json.Marshal(oldorder)
 		strrt := string(info)
+
 		return c3mcommon.ReturnJsonMessage("1", "", "success", strrt)
 	}
 	return c3mcommon.ReturnJsonMessage("-5", "", "", "")
