@@ -382,6 +382,11 @@ func UpdateOrder(usex models.UserSession) string {
 	for _, v := range shippers {
 		mapshipper[v.ID.Hex()] = v.Name
 	}
+	stats := rpch.GetAllOrderStatus(usex.Shop.ID.Hex())
+	mapstat := make(map[string]models.OrderStatus)
+	for _, v := range stats {
+		mapstat[v.ID.Hex()] = v
+	}
 
 	var cus models.Customer
 	if oldorder.Phone == order.Phone {
@@ -425,6 +430,9 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.ShipmentCode = order.ShipmentCode
 		oldorder.Total = order.Total
 		oldorder.SearchIndex = inflect.ParameterizeJoin(oldorder.Name+oldorder.Email+oldorder.Phone+oldorder.City+oldorder.District+oldorder.Ward+oldorder.Address+oldorder.CusNote+oldorder.Note+oldorder.ShipmentCode+oldorder.CampaignName+mapshipper[oldorder.ShipperId], " ")
+		if mapstat[oldorder.Status].Finish {
+			oldorder.Whookupdate = time.Now().Unix()
+		}
 		rpch.SaveOrder(oldorder)
 		oldorder.SearchIndex = ""
 		info, _ := json.Marshal(oldorder)
