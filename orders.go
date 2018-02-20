@@ -428,6 +428,7 @@ func UpdateOrder(usex models.UserSession) string {
 		oldorder.ShipFee = order.ShipFee
 		oldorder.ShipmentCode = order.ShipmentCode
 		oldorder.Total = order.Total
+		oldorder.IsPaid = order.IsPaid
 		oldorder.SearchIndex = inflect.ParameterizeJoin(oldorder.Name+oldorder.Email+oldorder.Phone+oldorder.City+oldorder.District+oldorder.Ward+oldorder.Address+oldorder.CusNote+oldorder.Note+oldorder.ShipmentCode+oldorder.CampaignName+mapshipper[oldorder.ShipperId], " ")
 		if mapstat[oldorder.Status].Finish {
 			oldorder.Whookupdate = time.Now().Unix()
