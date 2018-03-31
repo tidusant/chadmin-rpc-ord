@@ -6,6 +6,7 @@ import (
 	"github.com/tidusant/c3m-common/c3mcommon"
 	"github.com/tidusant/c3m-common/inflect"
 	"github.com/tidusant/c3m-common/log"
+	"github.com/tidusant/c3m-common/lzjs"
 	"github.com/tidusant/c3m-common/mycrypto"
 	"github.com/tidusant/c3m-common/mystring"
 	rpch "github.com/tidusant/chadmin-repo/cuahang"
@@ -275,9 +276,9 @@ func UpdateOrderStatus(usex models.UserSession) string {
 	info := strings.Split(usex.Params, ",")
 	cancelPartner := "0"
 	if len(info) > 1 {
-		changestatusid := info[len(info)-1]
-		info = info[:len(info)-1]
-		rpch.UpdateOrderStatus(usex.Shop.ID.Hex(), changestatusid, info)
+		changestatusid := info[1]
+		orderid := info[0]
+
 		//check cancel ghtk status:
 		status := rpch.GetStatusByID(changestatusid, usex.Shop.ID.Hex())
 		ghtkstatussync := status.PartnerStatus["ghtk"]
@@ -288,6 +289,26 @@ func UpdateOrderStatus(usex models.UserSession) string {
 				}
 			}
 		}
+		//check stock
+		order := rpch.GetOrderByID(orderid, usex.Shop.ID.Hex())
+		if order.Status == "" {
+			return c3mcommon.ReturnJsonMessage("-5", "order not found", "", "")
+		}
+		oldstat := rpch.GetStatusByID(order.Status, usex.Shop.ID.Hex())
+		if oldstat.Export != status.Export {
+			//update stock
+			sign := 1
+			if oldstat.Export {
+				sign = -1
+			}
+			for _, v := range order.Items {
+				if !rpch.ExportItem(usex.Shop.ID.Hex(), v.ProdCode, v.Code, v.Num*sign) {
+					titleb, _ := lzjs.DecompressFromBase64(v.Title)
+					return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+				}
+			}
+		}
+		rpch.UpdateOrderStatus(usex.Shop.ID.Hex(), changestatusid, orderid)
 
 	}
 
@@ -309,6 +330,7 @@ func SaveStatus(usex models.UserSession) string {
 		oldstat.Color = status.Color
 		oldstat.Default = status.Default
 		oldstat.Finish = status.Finish
+		oldstat.Export = status.Export
 		oldstat.PartnerStatus = status.PartnerStatus
 	} else {
 		oldstat.UserId = usex.UserID
@@ -360,8 +382,12 @@ func UpdateOrder(usex models.UserSession) string {
 		return c3mcommon.ReturnJsonMessage("0", "update order fail", "", "")
 	}
 	oldorder := order
+	mapolditems := make(map[string]models.OrderItem)
 	if order.ID.Hex() != "" {
 		oldorder = rpch.GetOrderByID(order.ID.Hex(), shop.ID.Hex())
+		for _, v := range oldorder.Items {
+			mapolditems[v.Code] = v
+		}
 	} else {
 		oldorder.ShopId = usex.Shop.ID.Hex()
 		oldorder.ID = bson.NewObjectId()
@@ -387,6 +413,20 @@ func UpdateOrder(usex models.UserSession) string {
 		mapstat[v.ID.Hex()] = v
 	}
 
+	//check export status
+	if mapstat[order.Status].Export {
+		//decrease stock
+		for _, v := range order.Items {
+			olditemcount := 0
+			if _, ok := mapolditems[v.Code]; ok {
+				olditemcount = mapolditems[v.Code].Num
+			}
+			if !(rpch.ExportItem(usex.Shop.ID.Hex(), v.ProdCode, v.Code, v.Num-olditemcount)) {
+				titleb, _ := lzjs.DecompressFromBase64(v.Title)
+				return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+			}
+		}
+	}
 	var cus models.Customer
 	if oldorder.Phone == order.Phone {
 		cus = rpch.GetCusByPhone(order.Phone, shop.ID.Hex())
@@ -433,6 +473,7 @@ func UpdateOrder(usex models.UserSession) string {
 		if mapstat[oldorder.Status].Finish {
 			oldorder.Whookupdate = time.Now().Unix()
 		}
+
 		rpch.SaveOrder(oldorder)
 		oldorder.SearchIndex = ""
 		info, _ := json.Marshal(oldorder)
