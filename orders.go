@@ -459,6 +459,7 @@ func UpdateOrder(usex models.UserSession) string {
 			oldorder.CampaignId = order.CampaignId
 			oldorder.CampaignName = mapcamp[order.CampaignId]
 		}
+
 		if oldorder.Whookupdate == 0 {
 			oldorder.Whookupdate = oldorder.Modified
 		}
