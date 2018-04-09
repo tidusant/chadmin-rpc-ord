@@ -299,13 +299,32 @@ func UpdateOrderStatus(usex models.UserSession) string {
 			//update stock
 			sign := 1
 			if oldstat.Export {
-				sign = -1
+				sign = -1 //return to stock
 			}
+			var exportitems []models.ExportItem
 			for _, v := range order.Items {
-				if !rpch.ExportItem(usex.Shop.ID.Hex(), v.ProdCode, v.Code, v.Num*sign) {
-					titleb, _ := lzjs.DecompressFromBase64(v.Title)
-					return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+				prod := rpch.GetProdByCode(usex.Shop.ID.Hex(), v.ProdCode)
+				var newexportitem models.ExportItem
+				for _, prop := range prod.Properties {
+					if prop.Code == v.Code {
+						prop.Stock -= v.Num * sign
+						if prop.Stock < 0 {
+							titleb, _ := lzjs.DecompressFromBase64(v.Title)
+							return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+						}
+						newexportitem.Code = v.ProdCode
+						newexportitem.ItemCode = v.Code
+						newexportitem.Num = v.Num * sign
+						newexportitem.ShopId = usex.Shop.ID.Hex()
+						break
+					}
 				}
+				exportitems = append(exportitems, newexportitem)
+
+			}
+			if !rpch.ExportItem(exportitems) {
+
+				return c3mcommon.ReturnJsonMessage("-5", "Error update stock: ", "", "")
 			}
 		}
 		rpch.UpdateOrderStatus(usex.Shop.ID.Hex(), changestatusid, orderid)
@@ -415,17 +434,49 @@ func UpdateOrder(usex models.UserSession) string {
 
 	//check export status
 	if mapstat[order.Status].Export {
-		//decrease stock
+		//check stock
+
+		var exportitems []models.ExportItem
 		for _, v := range order.Items {
 			olditemcount := 0
 			if _, ok := mapolditems[v.Code]; ok {
 				olditemcount = mapolditems[v.Code].Num
 			}
-			if !(rpch.ExportItem(usex.Shop.ID.Hex(), v.ProdCode, v.Code, v.Num-olditemcount)) {
-				titleb, _ := lzjs.DecompressFromBase64(v.Title)
-				return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+			var newexportitem models.ExportItem
+			prod := rpch.GetProdByCode(usex.Shop.ID.Hex(), v.ProdCode)
+			for _, prop := range prod.Properties {
+				if prop.Code == v.Code {
+					prop.Stock -= v.Num - olditemcount
+					if prop.Stock < 0 {
+						titleb, _ := lzjs.DecompressFromBase64(v.Title)
+						return c3mcommon.ReturnJsonMessage("-5", "Out of stock: "+string(titleb), "", "")
+					}
+					newexportitem.Code = v.ProdCode
+					newexportitem.ItemCode = v.Code
+					newexportitem.Num = v.Num
+
+					newexportitem.ShopId = usex.Shop.ID.Hex()
+					break
+				}
 			}
+			exportitems = append(exportitems, newexportitem)
+
 		}
+		//return item stock
+		var oldexportitems []models.ExportItem
+		for _, v := range mapolditems {
+			var old models.ExportItem
+			old.ShopId = usex.Shop.ID.Hex()
+			old.Code = v.ProdCode
+			old.ItemCode = v.Code
+			old.Num = -v.Num
+			oldexportitems = append(oldexportitems, old)
+		}
+		rpch.ExportItem(oldexportitems)
+		if !rpch.ExportItem(exportitems) {
+			return c3mcommon.ReturnJsonMessage("-5", "Error update stock: ", "", "")
+		}
+
 	}
 	var cus models.Customer
 	if oldorder.Phone == order.Phone {
