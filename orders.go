@@ -462,6 +462,7 @@ func UpdateOrder(usex models.UserSession) string {
 			exportitems = append(exportitems, newexportitem)
 
 		}
+
 		//return item stock
 		var oldexportitems []models.ExportItem
 		for _, v := range mapolditems {
