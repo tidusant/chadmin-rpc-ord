@@ -127,7 +127,7 @@ func parseOrder(order models.Order, usex models.UserSession, defaultstatus model
 			num, _ = strconv.Atoi(numstr)
 		}
 
-		//create order item
+		//create order item repush
 		var item models.OrderItem
 		item.Code = prod.Code
 		item.BasePrice = prod.Langs[order.L].BasePrice
